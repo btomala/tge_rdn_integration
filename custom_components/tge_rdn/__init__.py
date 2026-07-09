@@ -1,4 +1,4 @@
-"""TGE RDN Integration v2.1.4 - Web Table Parsing with Fixing I Prices."""
+"""TGE RDN Integration v2.1.5 - Web Table Parsing with Fixing I Prices."""
 from __future__ import annotations
 import logging
 from homeassistant.config_entries import ConfigEntry
@@ -15,7 +15,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up from config entry."""
-    _LOGGER.info("🚀 TGE RDN Integration v2.1.4 starting...")
+    _LOGGER.info("🚀 TGE RDN Integration v2.1.5 starting...")
     _LOGGER.info("✅ TGE Web Table Parsing + DST support")
 
     hass.data.setdefault(DOMAIN, {})
@@ -25,7 +25,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
 
-    _LOGGER.info("✅ TGE RDN v2.1.4 ready!")
+    _LOGGER.info("✅ TGE RDN v2.1.5 ready!")
     return True
 
 
