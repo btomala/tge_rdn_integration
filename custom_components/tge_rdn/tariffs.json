@@ -68,7 +68,7 @@
           "name": "G11",
           "zones": {
             "all": {
-              "rate": 349.59,
+              "rate": 389.59,
               "schedule": [{ "default": true }]
             }
           },
