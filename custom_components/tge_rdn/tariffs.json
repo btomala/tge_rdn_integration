@@ -86,8 +86,8 @@
               "rate": 73.17,
               "schedule": [
                 { "hours": [22,23,0,1,2,3,4,5], "days": "all", "season": "all" },
-                { "hours": [13,14], "days": "workdays", "season": "winter" },
-                { "hours": [15,16], "days": "workdays", "season": "summer" }
+                { "hours": [13,14], "days": "all", "season": "winter" },
+                { "hours": [15,16], "days": "all", "season": "summer" }
               ]
             },
             "high": {
@@ -154,7 +154,7 @@
               "rate": 99.27,
               "schedule": [
                 { "hours": [22,23,0,1,2,3,4,5], "days": "all", "season": "all" },
-                { "hours": [13,14], "days": "workdays", "season": "all" }
+                { "hours": [13,14], "days": "all", "season": "all" }
               ]
             },
             "high": {
@@ -248,7 +248,7 @@
               "rate": 80.0,
               "schedule": [
                 { "hours": [22,23,0,1,2,3,4,5], "days": "all", "season": "all" },
-                { "hours": [13,14], "days": "workdays", "season": "all" }
+                { "hours": [13,14], "days": "all", "season": "all" }
               ]
             },
             "high": {
@@ -290,7 +290,7 @@
               "rate": 80.0,
               "schedule": [
                 { "hours": [22,23,0,1,2,3,4,5], "days": "all", "season": "all" },
-                { "hours": [13,14], "days": "workdays", "season": "all" }
+                { "hours": [13,14], "days": "all", "season": "all" }
               ]
             },
             "high": {
@@ -332,7 +332,7 @@
               "rate": 80.0,
               "schedule": [
                 { "hours": [22,23,0,1,2,3,4,5], "days": "all", "season": "all" },
-                { "hours": [13,14], "days": "workdays", "season": "all" }
+                { "hours": [13,14], "days": "all", "season": "all" }
               ]
             },
             "high": {

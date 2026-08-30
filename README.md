@@ -2,7 +2,7 @@
 
 This project is a custom component for Home Assistant that integrates with the Polish energy exchange (TGE RDN) to provide real-time electricity prices. It scrapes the TGE website to fetch the data, calculates prices based on your dealer and distributor tariff, and exposes them as sensors in Home Assistant.
 
-**Version:** 2.1.5
+**Version:** 2.1.6
 
 ## Features
 
@@ -95,6 +95,9 @@ All price sensors expose `prices_today_gross` and `prices_tomorrow_gross` attrib
     *   Otherwise: Every 30 minutes.
 
 ## Recent Changes
+
+### v2.1.6
+*   **Tariff Fix:** Corrected the afternoon low-price window for G12 tariffs so it also applies on weekends and Polish public holidays, including seasonal PGE hours.
 
 ### v2.1.5
 *   **Patch Release:** Bumped the integration version for the GitHub release and aligned package metadata across Home Assistant distribution files.

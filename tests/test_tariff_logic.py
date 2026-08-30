@@ -136,6 +136,44 @@ class TestTariffLogic(unittest.TestCase):
         self.assertEqual(dist_rate, 398.37)
         self.assertEqual(seller_price, 569.11)
 
+    def test_tauron_g12_weekend_midday_uses_low_prices(self):
+        """Test that Tauron G12 uses both low seller and distribution rates on weekends."""
+        options = {
+            CONF_DEALER: "Tauron Sprzedaż",
+            CONF_DEALER_TARIFF: "G12",
+            CONF_DISTRIBUTOR: "Tauron Dystrybucja",
+            CONF_DIST_TARIFF: "G12",
+        }
+        entry = MockEntry(options)
+        sensor = TGERDNSensor(self.coord, entry, "current_price")
+
+        zone_name, dist_rate, seller_price = sensor._resolve(datetime(2026, 1, 10, 13, 0))
+        self.assertEqual(zone_name, "low")
+        self.assertEqual(dist_rate, 99.27)
+        self.assertEqual(seller_price, 417.97)
+
+        zone_name, dist_rate, seller_price = sensor._resolve(datetime(2026, 1, 10, 15, 0))
+        self.assertEqual(zone_name, "high")
+        self.assertEqual(dist_rate, 327.56)
+        self.assertEqual(seller_price, 547.97)
+
+    def test_pge_g12_weekend_midday_uses_seasonal_low_prices(self):
+        """Test that PGE G12 uses low seller and distribution rates on seasonal weekend windows."""
+        options = {
+            CONF_DEALER: "PGE Obrót",
+            CONF_DEALER_TARIFF: "G12",
+            CONF_DISTRIBUTOR: "PGE Dystrybucja",
+            CONF_DIST_TARIFF: "G12",
+        }
+        entry = MockEntry(options)
+        sensor = TGERDNSensor(self.coord, entry, "current_price")
+
+        for when in [datetime(2026, 1, 10, 13, 0), datetime(2026, 7, 4, 15, 0)]:
+            zone_name, dist_rate, seller_price = sensor._resolve(when)
+            self.assertEqual(zone_name, "low")
+            self.assertEqual(dist_rate, 73.17)
+            self.assertEqual(seller_price, 373.98)
+
     def test_triple_tauron_g13(self):
         """Test Tauron G13 — three zones from JSON (mid_peak=263.82, peak=433.33, off_peak=82.70)."""
         options = {

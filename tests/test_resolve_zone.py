@@ -157,10 +157,29 @@ class TestResolveZoneG12Tauron(unittest.TestCase):
             self.assertEqual(rate, 99.27)
 
     def test_midday_low_zone(self):
-        """13:00-14:59 workday should be low."""
+        """13:00-14:59 should be low every day."""
         for h in [13, 14]:
             zone, rate = resolve_zone(self.zones, dt(2026, 1, 12, h), False)  # Monday
             self.assertEqual(zone, "low", f"Hour {h} should be low")
+
+    def test_weekend_midday_low_zone_boundaries(self):
+        """Weekend midday window should be low only from 13:00 to 14:59."""
+        for day in [10, 11]:  # Saturday and Sunday
+            expected_zones = {12: "high", 13: "low", 14: "low", 15: "high"}
+            for hour, expected_zone in expected_zones.items():
+                zone, _ = resolve_zone(self.zones, dt(2026, 1, day, hour), False)
+                self.assertEqual(
+                    zone,
+                    expected_zone,
+                    f"Day {day}, hour {hour} should be {expected_zone}",
+                )
+
+    def test_holiday_midday_low_zone(self):
+        """The midday low window should also apply on public holidays."""
+        for hour in [13, 14]:
+            zone, rate = resolve_zone(self.zones, dt(2026, 12, 25, hour), True)
+            self.assertEqual(zone, "low")
+            self.assertEqual(rate, 99.27)
 
     def test_daytime_high_zone(self):
         """6:00-12:59 and 15:00-21:59 workday should be high."""
@@ -218,6 +237,20 @@ class TestResolveZoneG12PGE(unittest.TestCase):
         """Summer (Jul): hour 13 is NOT low (unlike winter)."""
         zone, _ = resolve_zone(self.zones, dt(2026, 7, 6, 13), False)
         self.assertEqual(zone, "high")
+
+    def test_weekend_midday_low_in_both_seasons(self):
+        """Seasonal midday windows should also apply on weekends."""
+        winter_zone, _ = resolve_zone(self.zones, dt(2026, 1, 10, 13), False)
+        summer_zone, _ = resolve_zone(self.zones, dt(2026, 7, 4, 15), False)
+        self.assertEqual(winter_zone, "low")
+        self.assertEqual(summer_zone, "low")
+
+    def test_holiday_midday_low_in_both_seasons(self):
+        """Seasonal midday windows should also apply on public holidays."""
+        winter_zone, _ = resolve_zone(self.zones, dt(2026, 12, 25, 13), True)
+        summer_zone, _ = resolve_zone(self.zones, dt(2026, 5, 1, 15), True)
+        self.assertEqual(winter_zone, "low")
+        self.assertEqual(summer_zone, "low")
 
     def test_night_same_in_both_seasons(self):
         """Night hours are low regardless of season."""
@@ -448,6 +481,40 @@ class TestLoadTariffs(unittest.TestCase):
                 if t.get("is_dynamic"):
                     self.assertIn("exchange_fee", t)
                     self.assertIn("trade_fee", t)
+
+    def test_all_g12_midday_windows_apply_every_day(self):
+        """Every distributor G12 midday window applies on workdays, weekends, and holidays."""
+        dates_by_season = {
+            "winter": [
+                (dt(2026, 1, 12, 0), False),
+                (dt(2026, 1, 10, 0), False),
+                (dt(2026, 12, 25, 0), True),
+            ],
+            "summer": [
+                (dt(2026, 7, 6, 0), False),
+                (dt(2026, 7, 4, 0), False),
+                (dt(2026, 5, 1, 0), True),
+            ],
+            "all": [
+                (dt(2026, 1, 12, 0), False),
+                (dt(2026, 1, 10, 0), False),
+                (dt(2026, 12, 25, 0), True),
+            ],
+        }
+
+        for distributor in self.data["distributors"]:
+            g12 = next((tariff for tariff in distributor["tariffs"] if tariff["name"] == "G12"), None)
+            if g12 is None:
+                continue
+            midday_rules = g12["zones"]["low"]["schedule"][1:]
+            self.assertTrue(midday_rules, f"{distributor['name']} G12 has no midday low window")
+            for rule in midday_rules:
+                self.assertEqual(rule.get("days"), "all", distributor["name"])
+                for base_datetime, is_holiday in dates_by_season[rule.get("season", "all")]:
+                    for hour in rule["hours"]:
+                        when = base_datetime.replace(hour=hour)
+                        zone, _ = resolve_zone(g12["zones"], when, is_holiday)
+                        self.assertEqual(zone, "low", f"{distributor['name']} at {when}")
 
     def test_distributor_tariffs_have_zones(self):
         for dist in self.data["distributors"]:

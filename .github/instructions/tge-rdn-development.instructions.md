@@ -97,8 +97,8 @@ All config is stored in `entry.options`, not `entry.data`.
       "rate": 80.0,
       "schedule": [
         { "hours": [22,23,0,1,2,3,4,5], "days": "all", "season": "all" },
-        { "hours": [13,14], "days": "workdays", "season": "winter" },
-        { "hours": [15,16], "days": "workdays", "season": "summer" }
+        { "hours": [13,14], "days": "all", "season": "winter" },
+        { "hours": [15,16], "days": "all", "season": "summer" }
       ]
     },
     "high": {
