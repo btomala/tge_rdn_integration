@@ -8,7 +8,7 @@
         { "name": "G12", "is_dynamic": false, "energy_prices_netto_mwh": { "high": 569.11, "low": 373.98 } },
         { "name": "G12w", "is_dynamic": false, "energy_prices_netto_mwh": { "high": 585.37, "low": 430.89 } },
         { "name": "G12e", "trade_fee": 34.96, "is_dynamic": false, "energy_prices_netto_mwh": { "high": 682.93, "low": 406.50 } },
-        { "name": "Dynamic", "exchange_fee": 115.0, "trade_fee": 0, "is_dynamic": true }
+        { "name": "Dynamic", "exchange_fee": 115.0, "trade_fee": 27, "is_dynamic": true }
       ]
     },
     {
