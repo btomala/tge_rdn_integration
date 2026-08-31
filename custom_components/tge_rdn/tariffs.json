@@ -7,6 +7,7 @@
         { "name": "G11", "is_dynamic": false, "energy_prices_netto_mwh": { "all": 504.07 } },
         { "name": "G12", "is_dynamic": false, "energy_prices_netto_mwh": { "high": 569.11, "low": 373.98 } },
         { "name": "G12w", "is_dynamic": false, "energy_prices_netto_mwh": { "high": 585.37, "low": 430.89 } },
+        { "name": "G12e", "trade_fee": 34.96, "is_dynamic": false, "energy_prices_netto_mwh": { "high": 682.93, "low": 406.50 } },
         { "name": "Dynamic", "exchange_fee": 2.0, "trade_fee": 5.0, "is_dynamic": true }
       ]
     },
@@ -83,7 +84,7 @@
           "name": "G12",
           "zones": {
             "low": {
-              "rate": 73.17,
+              "rate": 117.07,
               "schedule": [
                 { "hours": [22,23,0,1,2,3,4,5], "days": "all", "season": "all" },
                 { "hours": [13,14], "days": "all", "season": "winter" },
@@ -91,7 +92,7 @@
               ]
             },
             "high": {
-              "rate": 398.37,
+              "rate": 442.28,
               "schedule": [{ "default": true }]
             }
           },
@@ -106,7 +107,7 @@
           "name": "G12w",
           "zones": {
             "low": {
-              "rate": 81.3,
+              "rate": 125.2,
               "schedule": [
                 { "hours": [22,23,0,1,2,3,4,5], "days": "all", "season": "all" },
                 { "hours": [13,14], "days": "workdays", "season": "winter" },
@@ -116,12 +117,39 @@
               ]
             },
             "high": {
-              "rate": 430.89,
+              "rate": 474.8,
               "schedule": [{ "default": true }]
             }
           },
           "fixed_fees": {
             "fixed_transmission_fee": 14.96,
+            "transitional_fee": 0.0,
+            "subscription_fee": 4.47,
+            "capacity_fee": 24.07
+          }
+        },
+        {
+          "name": "G12e",
+          "zones": {
+            "low": {
+              "rate": 76.42,
+              "schedule": [
+                { "hours": [22,23,0,1,2,3,4,5], "days": "all", "season": "all" },
+                { "hours": [13,14], "days": "workdays", "months": [1,2,11,12] },
+                { "hours": [11,12,13,14], "days": "workdays", "months": [3,10] },
+                { "hours": [10,11,12,13,14,15,16], "days": "workdays", "months": [4,9] },
+                { "hours": [9,10,11,12,13,14,15,16], "days": "workdays", "months": [5,6,7,8] },
+                { "hours": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23], "days": "weekends", "season": "all" },
+                { "hours": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23], "days": "holidays", "season": "all" }
+              ]
+            },
+            "high": {
+              "rate": 426.02,
+              "schedule": [{ "default": true }]
+            }
+          },
+          "fixed_fees": {
+            "fixed_transmission_fee": 30.0,
             "transitional_fee": 0.0,
             "subscription_fee": 4.47,
             "capacity_fee": 24.07

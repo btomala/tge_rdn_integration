@@ -75,7 +75,7 @@ class TestTariffLogic(unittest.TestCase):
         self.assertEqual(sensor._get_dist(dt), 349.59)
 
     def test_dual_standard_g12(self):
-        """Test PGE G12 — dual zones from JSON (low=73.17, high=398.37)."""
+        """Test PGE G12 dual zones with full variable distribution rates."""
         options = {
             CONF_DISTRIBUTOR: "PGE Dystrybucja",
             CONF_DIST_TARIFF: "G12",
@@ -84,18 +84,18 @@ class TestTariffLogic(unittest.TestCase):
         sensor = TGERDNSensor(self.coord, entry, "current_price")
 
         # Low: 22-05 all days
-        self.assertEqual(sensor._get_dist(datetime(2025, 1, 1, 23, 0)), 73.17)
-        self.assertEqual(sensor._get_dist(datetime(2025, 1, 1, 3, 0)), 73.17)
+        self.assertEqual(sensor._get_dist(datetime(2025, 1, 1, 23, 0)), 117.07)
+        self.assertEqual(sensor._get_dist(datetime(2025, 1, 1, 3, 0)), 117.07)
 
         # Low: 13-14 workday winter
-        self.assertEqual(sensor._get_dist(datetime(2025, 1, 2, 14, 0)), 73.17)  # Thursday
+        self.assertEqual(sensor._get_dist(datetime(2025, 1, 2, 14, 0)), 117.07)  # Thursday
 
         # High: otherwise
-        self.assertEqual(sensor._get_dist(datetime(2025, 1, 2, 10, 0)), 398.37)
-        self.assertEqual(sensor._get_dist(datetime(2025, 1, 2, 18, 0)), 398.37)
+        self.assertEqual(sensor._get_dist(datetime(2025, 1, 2, 10, 0)), 442.28)
+        self.assertEqual(sensor._get_dist(datetime(2025, 1, 2, 18, 0)), 442.28)
 
     def test_dual_weekend_g12w(self):
-        """Test PGE G12w — dual zones with weekend/holiday override (low=81.3, high=430.89)."""
+        """Test PGE G12w dual zones with full variable distribution rates."""
         options = {
             CONF_DISTRIBUTOR: "PGE Dystrybucja",
             CONF_DIST_TARIFF: "G12w",
@@ -104,16 +104,16 @@ class TestTariffLogic(unittest.TestCase):
         sensor = TGERDNSensor(self.coord, entry, "current_price")
 
         # Weekend (Saturday 2025-01-04) - Should be low
-        self.assertEqual(sensor._get_dist(datetime(2025, 1, 4, 12, 0)), 81.3)
+        self.assertEqual(sensor._get_dist(datetime(2025, 1, 4, 12, 0)), 125.2)
 
         # Holiday (Jan 1st) - Should be low
-        self.assertEqual(sensor._get_dist(datetime(2025, 1, 1, 12, 0)), 81.3)
+        self.assertEqual(sensor._get_dist(datetime(2025, 1, 1, 12, 0)), 125.2)
 
         # Weekday peak - high
-        self.assertEqual(sensor._get_dist(datetime(2025, 1, 2, 10, 0)), 430.89)  # Thursday 10am
+        self.assertEqual(sensor._get_dist(datetime(2025, 1, 2, 10, 0)), 474.8)  # Thursday 10am
 
         # Weekday off-peak winter 13-14 - low
-        self.assertEqual(sensor._get_dist(datetime(2025, 1, 2, 14, 0)), 81.3)  # Thursday 2pm
+        self.assertEqual(sensor._get_dist(datetime(2025, 1, 2, 14, 0)), 125.2)  # Thursday 2pm
 
     def test_pge_static_seller_prices_are_loaded_as_netto(self):
         """Test that PGE fixed seller tariffs expose netto seller prices from tariffs.json."""
@@ -128,13 +128,41 @@ class TestTariffLogic(unittest.TestCase):
 
         zone_name, dist_rate, seller_price = sensor._resolve(datetime(2025, 1, 2, 14, 0))
         self.assertEqual(zone_name, "low")
-        self.assertEqual(dist_rate, 73.17)
+        self.assertEqual(dist_rate, 117.07)
         self.assertEqual(seller_price, 373.98)
 
         zone_name, dist_rate, seller_price = sensor._resolve(datetime(2025, 1, 2, 10, 0))
         self.assertEqual(zone_name, "high")
-        self.assertEqual(dist_rate, 398.37)
+        self.assertEqual(dist_rate, 442.28)
         self.assertEqual(seller_price, 569.11)
+
+    def test_pge_g12e_prices_are_loaded_as_netto(self):
+        """Test G12e seller and distributor prices converted from gross to netto."""
+        options = {
+            CONF_DEALER: "PGE Obrót",
+            CONF_DEALER_TARIFF: "G12e",
+            CONF_DISTRIBUTOR: "PGE Dystrybucja",
+            CONF_DIST_TARIFF: "G12e",
+            CONF_VAT_RATE: 0.23,
+        }
+        entry = MockEntry(options)
+        sensor = TGERDNSensor(self.coord, entry, "current_price")
+
+        zone_name, dist_rate, seller_price = sensor._resolve(datetime(2026, 5, 4, 9, 0))
+        self.assertEqual((zone_name, dist_rate, seller_price), ("low", 76.42, 406.50))
+
+        zone_name, dist_rate, seller_price = sensor._resolve(datetime(2026, 5, 4, 17, 0))
+        self.assertEqual((zone_name, dist_rate, seller_price), ("high", 426.02, 682.93))
+
+        fixed_fee = TGEFixedFeeSensor(
+            entry, "fixed_transmission_fee", "Fixed Transmission Fee",
+            CONF_FIXED_TRANSMISSION_FEE, DEFAULT_FIXED_TRANSMISSION_FEE,
+        )
+        trade_fee = TGEFixedFeeSensor(
+            entry, "trade_fee", "Trade Fee", CONF_TRADE_FEE, DEFAULT_TRADE_FEE,
+        )
+        self.assertAlmostEqual(fixed_fee.state, 36.90, places=2)
+        self.assertAlmostEqual(trade_fee.state, 43.00, places=2)
 
     def test_tauron_g12_weekend_midday_uses_low_prices(self):
         """Test that Tauron G12 uses both low seller and distribution rates on weekends."""
@@ -171,7 +199,7 @@ class TestTariffLogic(unittest.TestCase):
         for when in [datetime(2026, 1, 10, 13, 0), datetime(2026, 7, 4, 15, 0)]:
             zone_name, dist_rate, seller_price = sensor._resolve(when)
             self.assertEqual(zone_name, "low")
-            self.assertEqual(dist_rate, 73.17)
+            self.assertEqual(dist_rate, 117.07)
             self.assertEqual(seller_price, 373.98)
 
     def test_triple_tauron_g13(self):

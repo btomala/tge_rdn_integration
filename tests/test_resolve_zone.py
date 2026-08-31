@@ -442,6 +442,48 @@ class TestResolveZoneG12wPGE(unittest.TestCase):
             self.assertEqual(zone, "low", f"Weekend hour {h} should be low")
 
 
+class TestResolveZoneG12ePGE(unittest.TestCase):
+    """Test PGE G12e monthly workday windows and all-day days off."""
+
+    def setUp(self):
+        data = load_test_tariffs()
+        self.zones = get_dist_zones(data, "PGE Dystrybucja", "G12e")
+
+    def test_every_month_workday_schedule(self):
+        """Each month uses its published daytime window plus 22:00-06:00."""
+        workdays = {
+            1: 12, 2: 2, 3: 2, 4: 1, 5: 4, 6: 1,
+            7: 6, 8: 3, 9: 1, 10: 5, 11: 2, 12: 1,
+        }
+        daytime_windows = {
+            1: range(13, 15), 2: range(13, 15),
+            3: range(11, 15), 4: range(10, 17),
+            5: range(9, 17), 6: range(9, 17),
+            7: range(9, 17), 8: range(9, 17),
+            9: range(10, 17), 10: range(11, 15),
+            11: range(13, 15), 12: range(13, 15),
+        }
+
+        for month, day in workdays.items():
+            low_hours = set(range(0, 6)) | set(daytime_windows[month]) | {22, 23}
+            for hour in range(24):
+                with self.subTest(month=month, hour=hour):
+                    zone, rate = resolve_zone(self.zones, dt(2026, month, day, hour), False)
+                    expected_zone = "low" if hour in low_hours else "high"
+                    expected_rate = 76.42 if expected_zone == "low" else 426.02
+                    self.assertEqual(zone, expected_zone)
+                    self.assertEqual(rate, expected_rate)
+
+    def test_weekend_and_holiday_all_low(self):
+        """Weekends and public holidays use the low zone all day."""
+        for when, is_holiday in [(dt(2026, 7, 4, 0), False), (dt(2026, 12, 25, 0), True)]:
+            for hour in range(24):
+                with self.subTest(when=when, hour=hour):
+                    zone, rate = resolve_zone(self.zones, when.replace(hour=hour), is_holiday)
+                    self.assertEqual(zone, "low")
+                    self.assertEqual(rate, 76.42)
+
+
 class TestResolveZoneCustom(unittest.TestCase):
     """Test Custom tariff — single zone with rate 0."""
 
