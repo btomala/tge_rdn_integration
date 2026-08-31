@@ -398,8 +398,16 @@ class TestTariffLogic(unittest.TestCase):
             DEFAULT_TRADE_FEE,
         )
 
-        # tariffs.json: PGE Dynamic trade_fee = 5.0 netto
-        self.assertAlmostEqual(sensor.state, 6.15, places=2)
+        # tariffs.json: PGE Dynamic trade_fee = 0.0 netto
+        self.assertAlmostEqual(sensor.state, 0.0, places=2)
+
+    def test_pge_dynamic_exchange_fee(self):
+        """Test the PGE Dynamic exchange fee configured in tariffs.json."""
+        data = load_tariffs()
+        pge = next(seller for seller in data["sellers"] if seller["name"] == "PGE Obrót")
+        dynamic = next(tariff for tariff in pge["tariffs"] if tariff["name"] == "Dynamic")
+        self.assertEqual(dynamic["exchange_fee"], 115.0)
+        self.assertEqual(dynamic["trade_fee"], 0)
 
 if __name__ == '__main__':
     unittest.main()
