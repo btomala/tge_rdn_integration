@@ -14,18 +14,21 @@ sys.modules["homeassistant.const"] = MagicMock()
 sys.modules["homeassistant.core"] = MagicMock()
 sys.modules["homeassistant.helpers"] = MagicMock()
 sys.modules["homeassistant.helpers.entity_platform"] = MagicMock()
+sys.modules["homeassistant.helpers.device_registry"] = MagicMock()
 
 # Define dummy base class for BinarySensorEntity
 class MockBinarySensorEntity:
     pass
 
 sys.modules["homeassistant.components.binary_sensor"].BinarySensorEntity = MockBinarySensorEntity
+sys.modules["homeassistant.helpers.device_registry"].DeviceInfo = dict
+sys.modules["homeassistant.helpers.device_registry"].DeviceEntryType.SERVICE = "service"
 
 # Add the custom_components to the path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from custom_components.tge_rdn.binary_sensor import TGEDynamicTariffBinarySensor, load_tariffs
-from custom_components.tge_rdn.const import DOMAIN, SENSOR_IS_DYNAMIC
+from custom_components.tge_rdn.const import DOMAIN, SENSOR_IS_DYNAMIC, TGE_PAGE_URL
 
 
 class MockEntry:
@@ -81,6 +84,22 @@ class TestDynamicTariffBinarySensor(unittest.TestCase):
         entry = MockEntry({"dealer": "PGE Obrót", "dealer_tariff": "Dynamic"})
         sensor = TGEDynamicTariffBinarySensor(entry, self.tariffs_data)
         self.assertEqual(sensor._attr_unique_id, f"{DOMAIN}_test_entry_{SENSOR_IS_DYNAMIC}")
+
+    def test_service_device_info(self):
+        """Binary sensor should be assigned to the service device."""
+        entry = MockEntry({"dealer": "PGE Obrót", "dealer_tariff": "Dynamic"})
+        sensor = TGEDynamicTariffBinarySensor(entry, self.tariffs_data)
+        self.assertEqual(
+            sensor._attr_device_info,
+            {
+                "identifiers": {(DOMAIN, "test_entry")},
+                "entry_type": "service",
+                "name": "Ceny energii",
+                "manufacturer": "Towarowa Giełda Energii",
+                "model": "Całkowite ceny energii",
+                "configuration_url": TGE_PAGE_URL,
+            },
+        )
 
     def test_extra_state_attributes(self):
         """Extra attributes should include seller and tariff info."""

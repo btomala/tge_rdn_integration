@@ -17,6 +17,7 @@ from .const import (
     CONF_DEALER_TARIFF,
     SENSOR_IS_DYNAMIC,
 )
+from .entity import get_service_device_info
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -56,6 +57,7 @@ class TGEDynamicTariffBinarySensor(BinarySensorEntity):
         self._attr_has_entity_name = True
         self._attr_name = ENTITY_NAME_PL
         self._attr_unique_id = f"{DOMAIN}_{entry.entry_id}_{SENSOR_IS_DYNAMIC}"
+        self._attr_device_info = get_service_device_info(entry)
         self._attr_icon = "mdi:lightning-bolt"
 
     def _resolve_is_dynamic(self) -> bool:

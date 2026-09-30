@@ -15,6 +15,7 @@ sys.modules["homeassistant.const"] = MagicMock()
 sys.modules["homeassistant.core"] = MagicMock()
 sys.modules["homeassistant.helpers"] = MagicMock()
 sys.modules["homeassistant.helpers.entity_platform"] = MagicMock()
+sys.modules["homeassistant.helpers.device_registry"] = MagicMock()
 sys.modules["homeassistant.helpers.update_coordinator"] = MagicMock()
 sys.modules["homeassistant.helpers.event"] = MagicMock()
 sys.modules["homeassistant.util"] = MagicMock()
@@ -28,6 +29,8 @@ class MockCoordinatorEntity:
 
 sys.modules["homeassistant.components.sensor"].SensorEntity = MockSensorEntity
 sys.modules["homeassistant.helpers.update_coordinator"].CoordinatorEntity = MockCoordinatorEntity
+sys.modules["homeassistant.helpers.device_registry"].DeviceInfo = dict
+sys.modules["homeassistant.helpers.device_registry"].DeviceEntryType.SERVICE = "service"
 
 # Add the custom_components to the path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -73,6 +76,29 @@ class TestTariffLogic(unittest.TestCase):
 
         dt = datetime(2025, 1, 1, 20, 0)  # Wednesday evening
         self.assertEqual(sensor._get_dist(dt), 349.59)
+
+    def test_entities_share_service_device_info(self):
+        """Test entities are assigned to one service device."""
+        entry = MockEntry({})
+        sensor = TGERDNSensor(self.coord, entry, "current_price")
+        fixed_fee = TGEFixedFeeSensor(
+            entry,
+            "trade_fee",
+            "Trade Fee",
+            CONF_TRADE_FEE,
+            DEFAULT_TRADE_FEE,
+        )
+
+        expected = {
+            "identifiers": {(DOMAIN, "test_entry")},
+            "entry_type": "service",
+            "name": "Ceny energii",
+            "manufacturer": "Towarowa Giełda Energii",
+            "model": "Całkowite ceny energii",
+            "configuration_url": TGE_PAGE_URL,
+        }
+        self.assertEqual(sensor._attr_device_info, expected)
+        self.assertEqual(fixed_fee._attr_device_info, expected)
 
     def test_dual_standard_g12(self):
         """Test PGE G12 dual zones with full variable distribution rates."""

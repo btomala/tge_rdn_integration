@@ -17,6 +17,7 @@ sys.modules["homeassistant.const"] = MagicMock()
 sys.modules["homeassistant.core"] = MagicMock()
 sys.modules["homeassistant.helpers"] = MagicMock()
 sys.modules["homeassistant.helpers.entity_platform"] = MagicMock()
+sys.modules["homeassistant.helpers.device_registry"] = MagicMock()
 sys.modules["homeassistant.helpers.update_coordinator"] = MagicMock()
 sys.modules["homeassistant.helpers.event"] = MagicMock()
 sys.modules["homeassistant.util"] = MagicMock()
@@ -30,6 +31,8 @@ class MockCoordinatorEntity:
 
 sys.modules["homeassistant.components.sensor"].SensorEntity = MockSensorEntity
 sys.modules["homeassistant.helpers.update_coordinator"].CoordinatorEntity = MockCoordinatorEntity
+sys.modules["homeassistant.helpers.device_registry"].DeviceInfo = dict
+sys.modules["homeassistant.helpers.device_registry"].DeviceEntryType.SERVICE = "service"
 
 # Add project root to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
