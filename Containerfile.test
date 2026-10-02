@@ -1,0 +1,14 @@
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /workspace
+
+COPY requirements-test.txt /tmp/requirements-test.txt
+RUN python -m pip install --upgrade pip \
+    && python -m pip install -r /tmp/requirements-test.txt
+
+ENTRYPOINT ["pytest"]
+CMD ["tests/test_resolve_zone.py", "tests/test_tariff_logic.py"]

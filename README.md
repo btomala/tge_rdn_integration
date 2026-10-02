@@ -94,6 +94,22 @@ All price sensors expose `prices_today_gross` and `prices_tomorrow_gross` attrib
     *   12:00 – 16:00: Every 10 minutes (to fetch tomorrow's prices ASAP).
     *   Otherwise: Every 30 minutes.
 
+## Development
+
+Run the stable unit test suite in a Podman container:
+
+```bash
+./scripts/test-container.sh
+```
+
+Run selected tests by passing pytest arguments:
+
+```bash
+./scripts/test-container.sh tests/test_resolve_zone.py -q
+```
+
+The default container command runs the maintained tariff and zone-resolution tests. Some legacy test scripts in `tests/` are not part of the default suite because they require live scraping or currently fail during pytest collection.
+
 ## Recent Changes
 
 ### v2.1.6
