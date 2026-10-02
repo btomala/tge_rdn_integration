@@ -68,6 +68,7 @@ from .const import (
     UPDATE_INTERVAL_FREQUENT,
 )
 from .entity import get_service_device_info
+from .holiday_provider import HolidayCalendarUnavailable, HolidayProvider
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -206,14 +207,17 @@ async def async_setup_entry(
     _LOGGER.info("💰 Price Source: Fixing I (primary)")
 
     tariffs_data = await hass.async_add_executor_job(load_tariffs)
+    now = datetime.now().date()
+    holiday_provider = HolidayProvider(hass)
+    await holiday_provider.async_setup([now, now + timedelta(days=1)])
 
-    coordinator = TGERDNDataUpdateCoordinator(hass, entry)
+    coordinator = TGERDNDataUpdateCoordinator(hass, entry, holiday_provider)
     await coordinator.async_config_entry_first_refresh()
 
     entities = [
-        TGERDNSensor(coordinator, entry, "current_price", tariffs_data),
-        TGERDNSensor(coordinator, entry, "next_hour_price", tariffs_data),
-        TGERDNSensor(coordinator, entry, "daily_average", tariffs_data),
+        TGERDNSensor(coordinator, entry, "current_price", tariffs_data, holiday_provider),
+        TGERDNSensor(coordinator, entry, "next_hour_price", tariffs_data, holiday_provider),
+        TGERDNSensor(coordinator, entry, "daily_average", tariffs_data, holiday_provider),
     ]
 
     # Fixed monthly fees
@@ -240,10 +244,11 @@ async def async_setup_entry(
 class TGERDNDataUpdateCoordinator(DataUpdateCoordinator):
     """Coordinator for TGE RDN data."""
 
-    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry, holiday_provider: Optional[HolidayProvider] = None) -> None:
         """Initialize coordinator."""
         self.hass = hass
         self.entry = entry
+        self.holiday_provider = holiday_provider
         self.tomorrow_data_available = False
         self.last_tomorrow_check = None
         self.last_hour_updated = datetime.now().hour
@@ -422,6 +427,7 @@ class TGERDNDataUpdateCoordinator(DataUpdateCoordinator):
         """First refresh with immediate fetch."""
         try:
             now = datetime.now()
+            await self._async_ensure_holiday_years(now)
             _LOGGER.info(f"📡 Initial fetch for {now.date()}")
 
             today_data = await self._fetch_day_data(now, "today")
@@ -449,6 +455,7 @@ class TGERDNDataUpdateCoordinator(DataUpdateCoordinator):
 
         try:
             now = datetime.now()
+            await self._async_ensure_holiday_years(now)
             today_data = await self._fetch_day_data(now, "today")
             tomorrow_data = await self._handle_tomorrow_data(now)
 
@@ -460,6 +467,12 @@ class TGERDNDataUpdateCoordinator(DataUpdateCoordinator):
         except Exception as err:
             _LOGGER.error(f"Update error: {err}")
             raise UpdateFailed(str(err))
+
+    async def _async_ensure_holiday_years(self, now: datetime) -> None:
+        """Refresh holiday cache for dates used by sensor calculations."""
+        if self.holiday_provider is None:
+            return
+        await self.holiday_provider.async_ensure_years({now.year, (now + timedelta(days=1)).year})
 
     async def _handle_tomorrow_data(self, now: datetime) -> Optional[Dict[str, Any]]:
         """Handle tomorrow data with preservation."""
@@ -592,12 +605,13 @@ class TGEFixedFeeSensor(SensorEntity):
 class TGERDNSensor(CoordinatorEntity, SensorEntity):
     """TGE RDN sensor."""
 
-    def __init__(self, coord, entry: ConfigEntry, sensor_type: str, tariffs_data: dict = None) -> None:
+    def __init__(self, coord, entry: ConfigEntry, sensor_type: str, tariffs_data: Optional[dict] = None, holiday_provider: Optional[Any] = None) -> None:
         """Initialize sensor."""
         super().__init__(coord)
         self._coord = coord
         self._entry = entry
         self._sensor_type = sensor_type
+        self._holiday_provider = holiday_provider
         self._attr_has_entity_name = True
         self._attr_name = ENTITY_NAMES_PL.get(sensor_type, sensor_type)
         self._attr_unique_id = f"{DOMAIN}_{entry.entry_id}_{sensor_type}"
@@ -652,7 +666,16 @@ class TGERDNSensor(CoordinatorEntity, SensorEntity):
     @property
     def available(self) -> bool:
         """Return if available."""
-        return REQUIRED_LIBRARIES_AVAILABLE and super().available
+        if not REQUIRED_LIBRARIES_AVAILABLE or not super().available:
+            return False
+        if self._holiday_provider is None:
+            return False
+        today = datetime.now().date()
+        if not self._holiday_provider.is_calendar_available(today):
+            return False
+        if self._sensor_type == "next_hour_price" and datetime.now().hour == 23:
+            return self._holiday_provider.is_calendar_available(today + timedelta(days=1))
+        return True
 
     @property
     def native_unit_of_measurement(self) -> str:
@@ -670,6 +693,9 @@ class TGERDNSensor(CoordinatorEntity, SensorEntity):
                 _LOGGER.info(f"⏰ Current price: {self._last_hour}:XX → {h}:XX")
             self._last_hour = h
             return self._calc()
+        except HolidayCalendarUnavailable as err:
+            _LOGGER.warning("Holiday calendar unavailable: %s", err)
+            return None
         except Exception as err:
             _LOGGER.error(f"Error: {err}")
             return None
@@ -680,7 +706,7 @@ class TGERDNSensor(CoordinatorEntity, SensorEntity):
             local = when.astimezone() if hasattr(when, 'astimezone') else when
         except Exception:
             local = when
-        holiday = is_polish_holiday(local.date())
+        holiday = self._is_holiday(local.date())
         zone_name, dist_rate = resolve_zone(self._zones, local, holiday)
         if self._is_dynamic or not self._seller_prices:
             energy_price = None  # caller must use TGE price
@@ -713,14 +739,16 @@ class TGERDNSensor(CoordinatorEntity, SensorEntity):
 
     def _is_holiday(self, d: date) -> bool:
         """Check if Polish holiday."""
-        return is_polish_holiday(d)
+        if self._holiday_provider is None:
+            raise HolidayCalendarUnavailable("Holiday provider is not configured")
+        return self._holiday_provider.is_holiday(d)
 
     def _is_working_day(self) -> bool:
         """Check if today is a normal working day (not weekend or holiday)."""
         today = datetime.now().date()
         if today.weekday() in (5, 6):
             return False
-        return not is_polish_holiday(today)
+        return not self._is_holiday(today)
 
     def _calc(self) -> Optional[float]:
         """Calculate value."""
@@ -783,8 +811,17 @@ class TGERDNSensor(CoordinatorEntity, SensorEntity):
             "price_source": "Fixing I",
             "last_update": data.get("last_update"),
             "unit": self._unit,
-            "is_working_day": self._is_working_day(),
         }
+        if self._holiday_provider:
+            attrs.update(self._holiday_provider.diagnostics)
+
+        try:
+            attrs["is_working_day"] = self._is_working_day()
+        except HolidayCalendarUnavailable as err:
+            attrs["is_working_day"] = None
+            attrs["holiday_calendar_available"] = False
+            attrs["holiday_error"] = str(err)
+            return attrs
 
         if data.get("today"):
             today = data["today"]

@@ -38,6 +38,7 @@ sys.modules["homeassistant.helpers.device_registry"].DeviceEntryType.SERVICE = "
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from custom_components.tge_rdn.sensor import resolve_zone, is_polish_holiday, _easter, load_tariffs
+from custom_components.tge_rdn.holiday_provider import HolidayProvider
 
 
 def dt(year, month, day, hour):
@@ -117,6 +118,21 @@ class TestPolishHolidays(unittest.TestCase):
     def test_weekend_not_holiday(self):
         # Regular Saturday — not a public holiday
         self.assertFalse(is_polish_holiday(date(2026, 3, 7)))
+
+
+class TestHolidayProviderParsing(unittest.TestCase):
+    """Test Nager API holiday parsing."""
+
+    def test_parse_public_christmas_eve_2026(self):
+        payload = [
+            {"date": "2026-12-24", "localName": "Wigilia Bożego Narodzenia", "types": ["Public"]},
+            {"date": "2026-12-25", "localName": "Boże Narodzenie", "holidayTypes": ["Public"]},
+        ]
+
+        holidays = HolidayProvider._parse_holidays(payload)
+
+        self.assertIn("2026-12-24", holidays)
+        self.assertIn("2026-12-25", holidays)
 
 
 class TestResolveZoneG11(unittest.TestCase):
@@ -328,6 +344,12 @@ class TestResolveZoneG12w(unittest.TestCase):
             zone, _ = resolve_zone(self.zones, dt(2026, 5, 1, h), True)
             self.assertEqual(zone, "low", f"Holiday workday hour {h} should be low")
 
+    def test_christmas_eve_2026_all_low_when_api_marks_holiday(self):
+        """Christmas Eve 2026 from API should be every hour low."""
+        for h in range(24):
+            zone, _ = resolve_zone(self.zones, dt(2026, 12, 24, h), True)
+            self.assertEqual(zone, "low", f"Christmas Eve hour {h} should be low")
+
 
 class TestResolveZoneG13(unittest.TestCase):
     """Test G13 triple-zone tariff for Tauron."""
@@ -389,6 +411,12 @@ class TestResolveZoneG13(unittest.TestCase):
         for h in [8, 12, 17, 20]:
             zone, _ = resolve_zone(self.zones, dt(2026, 5, 1, h), True)
             self.assertEqual(zone, "off_peak", f"Holiday hour {h} should be off_peak")
+
+    def test_christmas_eve_2026_all_off_peak_when_api_marks_holiday(self):
+        """Christmas Eve 2026 from API should be every hour off_peak."""
+        for h in [8, 12, 17, 20]:
+            zone, _ = resolve_zone(self.zones, dt(2026, 12, 24, h), True)
+            self.assertEqual(zone, "off_peak", f"Christmas Eve hour {h} should be off_peak")
 
     # --- Season boundaries ---
     def test_boundary_summer_peak_hour_19(self):

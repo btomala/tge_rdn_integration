@@ -38,6 +38,31 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from custom_components.tge_rdn.sensor import TGEFixedFeeSensor, TGERDNSensor, load_tariffs
 from custom_components.tge_rdn.const import *
 
+
+class StaticHolidayProvider:
+    HOLIDAYS = {
+        date(2025, 1, 1),
+        date(2025, 4, 20),
+        date(2025, 4, 21),
+        date(2025, 5, 3),
+        date(2025, 11, 11),
+        date(2026, 12, 24),
+    }
+
+    diagnostics = {
+        "holiday_source": "test",
+        "holiday_calendar_available": True,
+        "holiday_cache_years": [2025, 2026],
+        "holiday_cache_last_update": {},
+        "holiday_error": None,
+    }
+
+    def is_holiday(self, day):
+        return day in self.HOLIDAYS
+
+    def is_calendar_available(self, day):
+        return day.year in {2025, 2026}
+
 class MockCoordinator:
     def __init__(self):
         self.data = {}
@@ -52,6 +77,10 @@ class TestTariffLogic(unittest.TestCase):
 
     def setUp(self):
         self.coord = MockCoordinator()
+        self.holiday_provider = StaticHolidayProvider()
+
+    def _sensor(self, entry):
+        return TGERDNSensor(self.coord, entry, "current_price", holiday_provider=self.holiday_provider)
 
     def test_load_tariffs(self):
         """Test that tariffs.json loads correctly with new schema."""
@@ -68,19 +97,19 @@ class TestTariffLogic(unittest.TestCase):
             CONF_DIST_TARIFF: "G11",
         }
         entry = MockEntry(options)
-        sensor = TGERDNSensor(self.coord, entry, "current_price")
+        sensor = self._sensor(entry)
 
-        # PGE G11 "all" zone rate = 349.59 netto PLN/MWh
+        # PGE G11 "all" zone rate = 389.59 netto PLN/MWh
         dt = datetime(2025, 1, 1, 10, 0)  # Wednesday morning
-        self.assertEqual(sensor._get_dist(dt), 349.59)
+        self.assertEqual(sensor._get_dist(dt), 389.59)
 
         dt = datetime(2025, 1, 1, 20, 0)  # Wednesday evening
-        self.assertEqual(sensor._get_dist(dt), 349.59)
+        self.assertEqual(sensor._get_dist(dt), 389.59)
 
     def test_entities_share_service_device_info(self):
         """Test entities are assigned to one service device."""
         entry = MockEntry({})
-        sensor = TGERDNSensor(self.coord, entry, "current_price")
+        sensor = self._sensor(entry)
         fixed_fee = TGEFixedFeeSensor(
             entry,
             "trade_fee",
@@ -92,9 +121,9 @@ class TestTariffLogic(unittest.TestCase):
         expected = {
             "identifiers": {(DOMAIN, "test_entry")},
             "entry_type": "service",
-            "name": "Ceny energii",
-            "manufacturer": "Towarowa Giełda Energii",
-            "model": "Całkowite ceny energii",
+            "name": "TGE RDN Energy Prices",
+            "manufacturer": "@szczepuz999",
+            "model": "Total Energy Prices",
             "configuration_url": TGE_PAGE_URL,
         }
         self.assertEqual(sensor._attr_device_info, expected)
@@ -107,7 +136,7 @@ class TestTariffLogic(unittest.TestCase):
             CONF_DIST_TARIFF: "G12",
         }
         entry = MockEntry(options)
-        sensor = TGERDNSensor(self.coord, entry, "current_price")
+        sensor = self._sensor(entry)
 
         # Low: 22-05 all days
         self.assertEqual(sensor._get_dist(datetime(2025, 1, 1, 23, 0)), 117.07)
@@ -127,7 +156,7 @@ class TestTariffLogic(unittest.TestCase):
             CONF_DIST_TARIFF: "G12w",
         }
         entry = MockEntry(options)
-        sensor = TGERDNSensor(self.coord, entry, "current_price")
+        sensor = self._sensor(entry)
 
         # Weekend (Saturday 2025-01-04) - Should be low
         self.assertEqual(sensor._get_dist(datetime(2025, 1, 4, 12, 0)), 125.2)
@@ -150,7 +179,7 @@ class TestTariffLogic(unittest.TestCase):
             CONF_DIST_TARIFF: "G12",
         }
         entry = MockEntry(options)
-        sensor = TGERDNSensor(self.coord, entry, "current_price")
+        sensor = self._sensor(entry)
 
         zone_name, dist_rate, seller_price = sensor._resolve(datetime(2025, 1, 2, 14, 0))
         self.assertEqual(zone_name, "low")
@@ -172,7 +201,7 @@ class TestTariffLogic(unittest.TestCase):
             CONF_VAT_RATE: 0.23,
         }
         entry = MockEntry(options)
-        sensor = TGERDNSensor(self.coord, entry, "current_price")
+        sensor = self._sensor(entry)
 
         zone_name, dist_rate, seller_price = sensor._resolve(datetime(2026, 5, 4, 9, 0))
         self.assertEqual((zone_name, dist_rate, seller_price), ("low", 76.42, 406.50))
@@ -199,7 +228,7 @@ class TestTariffLogic(unittest.TestCase):
             CONF_DIST_TARIFF: "G12",
         }
         entry = MockEntry(options)
-        sensor = TGERDNSensor(self.coord, entry, "current_price")
+        sensor = self._sensor(entry)
 
         zone_name, dist_rate, seller_price = sensor._resolve(datetime(2026, 1, 10, 13, 0))
         self.assertEqual(zone_name, "low")
@@ -220,7 +249,7 @@ class TestTariffLogic(unittest.TestCase):
             CONF_DIST_TARIFF: "G12",
         }
         entry = MockEntry(options)
-        sensor = TGERDNSensor(self.coord, entry, "current_price")
+        sensor = self._sensor(entry)
 
         for when in [datetime(2026, 1, 10, 13, 0), datetime(2026, 7, 4, 15, 0)]:
             zone_name, dist_rate, seller_price = sensor._resolve(when)
@@ -235,7 +264,7 @@ class TestTariffLogic(unittest.TestCase):
             CONF_DIST_TARIFF: "G13",
         }
         entry = MockEntry(options)
-        sensor = TGERDNSensor(self.coord, entry, "current_price")
+        sensor = self._sensor(entry)
 
         # Weekend - off_peak
         self.assertEqual(sensor._get_dist(datetime(2025, 1, 4, 12, 0)), 82.70)
@@ -266,7 +295,7 @@ class TestTariffLogic(unittest.TestCase):
         """Test holiday detection."""
         options = {}
         entry = MockEntry(options)
-        sensor = TGERDNSensor(self.coord, entry, "current_price")
+        sensor = self._sensor(entry)
 
         self.assertTrue(sensor._is_holiday(date(2025, 1, 1)))  # New Year
         self.assertTrue(sensor._is_holiday(date(2025, 5, 3)))  # Constitution Day
@@ -285,7 +314,7 @@ class TestTariffLogic(unittest.TestCase):
             CONF_DIST_LOW: 100.0,
         }
         entry = MockEntry(options)
-        sensor = TGERDNSensor(self.coord, entry, "current_price")
+        sensor = self._sensor(entry)
 
         # Should always return the fallback rate
         self.assertEqual(sensor._get_dist(datetime(2025, 1, 1, 10, 0)), 100.0)
@@ -302,17 +331,17 @@ class TestTariffLogic(unittest.TestCase):
             CONF_EXCHANGE_FEE: 80.0,
         }
         entry = MockEntry(options)
-        sensor = TGERDNSensor(self.coord, entry, "current_price")
+        sensor = self._sensor(entry)
 
         self.assertTrue(sensor._is_dynamic)
         self.assertTrue(sensor._negative_prices_allowed)
 
         dt = datetime(2025, 6, 15, 14, 0)  # Sunday afternoon
         # Negative TGE price: -50 PLN/MWh
-        # base = -50 (not clamped), dist = 349.59, exchange_fee = 80.0, vat = 0.23
-        # total = (-50.0 + 80.0 + 349.59) * 1.23 = 379.59 * 1.23 = 466.8957
+        # base = -50 (not clamped), dist = 389.59, exchange_fee = 80.0, vat = 0.23
+        # total = (-50.0 + 80.0 + 389.59) * 1.23 = 419.59 * 1.23 = 516.0957
         result = sensor._compute_total(-50.0, dt)
-        self.assertAlmostEqual(result, 466.8957, places=4)
+        self.assertAlmostEqual(result, 516.0957, places=4)
 
     def test_tauron_negative_prices_clamped(self):
         """Test that Tauron Dynamic clamps negative TGE prices to 0."""
@@ -325,17 +354,17 @@ class TestTariffLogic(unittest.TestCase):
             CONF_EXCHANGE_FEE: 89.2,
         }
         entry = MockEntry(options)
-        sensor = TGERDNSensor(self.coord, entry, "current_price")
+        sensor = self._sensor(entry)
 
         self.assertTrue(sensor._is_dynamic)
         self.assertFalse(sensor._negative_prices_allowed)
 
         dt = datetime(2025, 6, 15, 14, 0)
         # Negative TGE price: -50 PLN/MWh
-        # base = max(0, -50) = 0, dist = 349.59, exchange_fee = 89.2, vat = 0.23
-        # total = (0.0 + 89.2 + 349.59) * 1.23 = 539.7117
+        # base = max(0, -50) = 0, dist = 389.59, exchange_fee = 89.2, vat = 0.23
+        # total = (0.0 + 89.2 + 389.59) * 1.23 = 588.9117
         result = sensor._compute_total(-50.0, dt)
-        self.assertAlmostEqual(result, 539.7117, places=4)
+        self.assertAlmostEqual(result, 588.9117, places=4)
 
     def test_pstryk_positive_prices(self):
         """Test that Pstryk works normally with positive TGE prices."""
@@ -348,14 +377,14 @@ class TestTariffLogic(unittest.TestCase):
             CONF_EXCHANGE_FEE: 80.0,
         }
         entry = MockEntry(options)
-        sensor = TGERDNSensor(self.coord, entry, "current_price")
+        sensor = self._sensor(entry)
 
         dt = datetime(2025, 6, 15, 14, 0)
         # Positive TGE price: 300 PLN/MWh
-        # base = 300, dist = 349.59, exchange_fee = 80.0, vat = 0.23
-        # total = (300.0 + 80.0 + 349.59) * 1.23 = 729.59 * 1.23 = 897.3957
+        # base = 300, dist = 389.59, exchange_fee = 80.0, vat = 0.23
+        # total = (300.0 + 80.0 + 389.59) * 1.23 = 769.59 * 1.23 = 946.5957
         result = sensor._compute_total(300.0, dt)
-        self.assertAlmostEqual(result, 897.3957, places=4)
+        self.assertAlmostEqual(result, 946.5957, places=4)
 
     def test_non_dynamic_prices_apply_vat_to_distribution_too(self):
         """Test that fixed seller price and distribution rates are both treated as netto."""
@@ -367,7 +396,7 @@ class TestTariffLogic(unittest.TestCase):
             CONF_VAT_RATE: 0.23,
         }
         entry = MockEntry(options)
-        sensor = TGERDNSensor(self.coord, entry, "current_price")
+        sensor = self._sensor(entry)
 
         dt = datetime(2025, 7, 2, 10, 0)  # Workday, summer, mid_peak
         # seller = 471.79, dist = 263.82, both netto

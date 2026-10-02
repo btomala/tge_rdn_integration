@@ -51,3 +51,11 @@ UPDATE_INTERVAL_NORMAL = 3600      # 1 hour
 
 # TGE DATA SOURCE
 TGE_PAGE_URL = "https://tge.pl/energia-elektryczna-rdn"
+
+# Holiday calendar source
+HOLIDAY_COUNTRY_CODE = "PL"
+HOLIDAY_CACHE_TTL_DAYS = 30
+HOLIDAY_API_URLS = [
+    "https://nagerholidays.com/api/v4/Holidays/{country}/{year}",
+    "https://date.nager.at/api/v3/PublicHolidays/{year}/{country}",
+]
