@@ -2,6 +2,7 @@
 import sys
 import os
 import unittest
+from datetime import datetime
 from unittest.mock import MagicMock
 
 # Mock Home Assistant modules BEFORE importing from custom_components
@@ -9,25 +10,43 @@ mock_ha = MagicMock()
 sys.modules["homeassistant"] = mock_ha
 sys.modules["homeassistant.components"] = MagicMock()
 sys.modules["homeassistant.components.binary_sensor"] = MagicMock()
+sys.modules["homeassistant.components.sensor"] = MagicMock()
 sys.modules["homeassistant.config_entries"] = MagicMock()
 sys.modules["homeassistant.const"] = MagicMock()
 sys.modules["homeassistant.core"] = MagicMock()
 sys.modules["homeassistant.helpers"] = MagicMock()
 sys.modules["homeassistant.helpers.entity_platform"] = MagicMock()
 sys.modules["homeassistant.helpers.device_registry"] = MagicMock()
+sys.modules["homeassistant.helpers.event"] = MagicMock()
+sys.modules["homeassistant.helpers.update_coordinator"] = MagicMock()
+sys.modules["homeassistant.util"] = MagicMock()
+sys.modules["voluptuous"] = MagicMock()
 
 # Define dummy base class for BinarySensorEntity
 class MockBinarySensorEntity:
     pass
 
+class MockSensorEntity:
+    pass
+
+class MockCoordinatorEntity:
+    def __init__(self, coord):
+        self.coordinator = coord
+
 sys.modules["homeassistant.components.binary_sensor"].BinarySensorEntity = MockBinarySensorEntity
+sys.modules["homeassistant.components.sensor"].SensorEntity = MockSensorEntity
+sys.modules["homeassistant.helpers.update_coordinator"].CoordinatorEntity = MockCoordinatorEntity
 sys.modules["homeassistant.helpers.device_registry"].DeviceInfo = dict
 sys.modules["homeassistant.helpers.device_registry"].DeviceEntryType.SERVICE = "service"
 
 # Add the custom_components to the path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from custom_components.tge_rdn.binary_sensor import TGEDynamicTariffBinarySensor, load_tariffs
+from custom_components.tge_rdn.binary_sensor import (
+    TGECheapElectricityBinarySensor,
+    TGEDynamicTariffBinarySensor,
+    load_tariffs,
+)
 from custom_components.tge_rdn.const import DOMAIN, SENSOR_IS_DYNAMIC, TGE_PAGE_URL
 
 
@@ -94,9 +113,9 @@ class TestDynamicTariffBinarySensor(unittest.TestCase):
             {
                 "identifiers": {(DOMAIN, "test_entry")},
                 "entry_type": "service",
-                "name": "Ceny energii",
-                "manufacturer": "Towarowa Giełda Energii",
-                "model": "Całkowite ceny energii",
+                "name": "TGE RDN Energy Prices",
+                "manufacturer": "@szczepuz999",
+                "model": "Total Energy Prices",
                 "configuration_url": TGE_PAGE_URL,
             },
         )
@@ -121,6 +140,62 @@ class TestDynamicTariffBinarySensor(unittest.TestCase):
         entry = MockEntry({"dealer": "Enea", "dealer_tariff": "G11"})
         sensor = TGEDynamicTariffBinarySensor(entry, self.tariffs_data)
         self.assertFalse(sensor.is_on)
+
+
+class TestCheapElectricityBinarySensor(unittest.TestCase):
+    """Test the low-zone tariff indicator."""
+
+    def setUp(self):
+        self.tariffs_data = load_tariffs()
+        self.holiday_provider = MagicMock()
+        self.holiday_provider.is_holiday.return_value = False
+        self.holiday_provider.is_calendar_available.return_value = True
+        self.entry = MockEntry({
+            "distributor": "PGE Dystrybucja",
+            "dist_tariff": "G12",
+        })
+        self.sensor = TGECheapElectricityBinarySensor(
+            self.entry, self.tariffs_data, self.holiday_provider
+        )
+
+    def test_low_zone_is_cheap(self):
+        """G12's night zone is reported as cheap."""
+        self.assertEqual(self.sensor._active_zone(datetime(2026, 1, 5, 22)), "low")
+
+    def test_high_zone_is_not_cheap(self):
+        """G12's daytime zone is not reported as cheap."""
+        self.assertEqual(self.sensor._active_zone(datetime(2026, 1, 5, 12)), "high")
+
+    def test_suggested_entity_id_is_cheap_electricity(self):
+        """The entity gets a stable, automation-friendly object ID."""
+        self.assertEqual(self.sensor._attr_suggested_object_id, "cheap_electricity")
+
+    def test_g13_off_peak_zone_is_cheap(self):
+        """G13's explicitly marked off-peak zone is reported as cheap."""
+        entry = MockEntry({
+            "dealer": "Tauron Sprzedaż",
+            "dealer_tariff": "G13",
+            "distributor": "Tauron Dystrybucja",
+            "dist_tariff": "G13",
+        })
+        sensor = TGECheapElectricityBinarySensor(
+            entry, self.tariffs_data, self.holiday_provider
+        )
+        self.assertEqual(sensor._active_zone(datetime(2026, 1, 5, 13)), "off_peak")
+        self.assertIn("off_peak", sensor._cheap_zones)
+
+    def test_dynamic_tariff_is_unavailable(self):
+        """Dynamic tariffs require a separate price-policy decision."""
+        entry = MockEntry({
+            "dealer": "PGE Obrót",
+            "dealer_tariff": "Dynamic",
+            "distributor": "PGE Dystrybucja",
+            "dist_tariff": "G12",
+        })
+        sensor = TGECheapElectricityBinarySensor(
+            entry, self.tariffs_data, self.holiday_provider
+        )
+        self.assertFalse(sensor.available)
 
 
 if __name__ == "__main__":

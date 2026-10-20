@@ -85,6 +85,7 @@
           "zones": {
             "low": {
               "rate": 117.07,
+              "cheap": true,
               "schedule": [
                 { "hours": [22,23,0,1,2,3,4,5], "days": "all", "season": "all" },
                 { "hours": [13,14], "days": "all", "season": "winter" },
@@ -108,6 +109,7 @@
           "zones": {
             "low": {
               "rate": 125.2,
+              "cheap": true,
               "schedule": [
                 { "hours": [22,23,0,1,2,3,4,5], "days": "all", "season": "all" },
                 { "hours": [13,14], "days": "workdays", "season": "winter" },
@@ -133,6 +135,7 @@
           "zones": {
             "low": {
               "rate": 76.42,
+              "cheap": true,
               "schedule": [
                 { "hours": [22,23,0,1,2,3,4,5], "days": "all", "season": "all" },
                 { "hours": [13,14], "days": "workdays", "months": [1,2,11,12] },
@@ -180,6 +183,7 @@
           "zones": {
             "low": {
               "rate": 99.27,
+              "cheap": true,
               "schedule": [
                 { "hours": [22,23,0,1,2,3,4,5], "days": "all", "season": "all" },
                 { "hours": [13,14], "days": "all", "season": "all" }
@@ -202,6 +206,7 @@
           "zones": {
             "low": {
               "rate": 94.72,
+              "cheap": true,
               "schedule": [
                 { "hours": [22,23,0,1,2,3,4,5], "days": "all", "season": "all" },
                 { "hours": [13,14], "days": "workdays", "season": "all" },
@@ -239,6 +244,7 @@
             },
             "off_peak": {
               "rate": 82.70,
+              "cheap": true,
               "schedule": [{ "default": true }]
             }
           },
@@ -274,6 +280,7 @@
           "zones": {
             "low": {
               "rate": 80.0,
+              "cheap": true,
               "schedule": [
                 { "hours": [22,23,0,1,2,3,4,5], "days": "all", "season": "all" },
                 { "hours": [13,14], "days": "all", "season": "all" }
@@ -316,6 +323,7 @@
           "zones": {
             "low": {
               "rate": 80.0,
+              "cheap": true,
               "schedule": [
                 { "hours": [22,23,0,1,2,3,4,5], "days": "all", "season": "all" },
                 { "hours": [13,14], "days": "all", "season": "all" }
@@ -358,6 +366,7 @@
           "zones": {
             "low": {
               "rate": 80.0,
+              "cheap": true,
               "schedule": [
                 { "hours": [22,23,0,1,2,3,4,5], "days": "all", "season": "all" },
                 { "hours": [13,14], "days": "all", "season": "all" }

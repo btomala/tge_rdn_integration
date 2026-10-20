@@ -207,9 +207,7 @@ async def async_setup_entry(
     _LOGGER.info("💰 Price Source: Fixing I (primary)")
 
     tariffs_data = await hass.async_add_executor_job(load_tariffs)
-    now = datetime.now().date()
-    holiday_provider = HolidayProvider(hass)
-    await holiday_provider.async_setup([now, now + timedelta(days=1)])
+    holiday_provider = hass.data[DOMAIN][entry.entry_id]["holiday_provider"]
 
     coordinator = TGERDNDataUpdateCoordinator(hass, entry, holiday_provider)
     await coordinator.async_config_entry_first_refresh()

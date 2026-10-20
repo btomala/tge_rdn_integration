@@ -1,9 +1,11 @@
 """TGE RDN Integration v2.1.6 - Web Table Parsing with Fixing I Prices."""
 from __future__ import annotations
+from datetime import datetime, timedelta
 import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+
 
 DOMAIN = "tge_rdn"
 PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR]
@@ -15,11 +17,16 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up from config entry."""
+    from .holiday_provider import HolidayProvider
+
     _LOGGER.info("🚀 TGE RDN Integration v2.1.6 starting...")
     _LOGGER.info("✅ TGE Web Table Parsing + DST support")
 
     hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = entry.data
+    holiday_provider = HolidayProvider(hass)
+    now = datetime.now().date()
+    await holiday_provider.async_setup([now, now + timedelta(days=1)])
+    hass.data[DOMAIN][entry.entry_id] = {"holiday_provider": holiday_provider}
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 

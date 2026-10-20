@@ -31,6 +31,7 @@ CONF_TRADE_FEE = "trade_fee"
 
 # Binary sensor
 SENSOR_IS_DYNAMIC = "is_dynamic_tariff"
+SENSOR_CHEAP_ELECTRICITY = "cheap_electricity"
 
 DEFAULT_EXCHANGE_FEE = 2.0
 DEFAULT_VAT_RATE = 0.23

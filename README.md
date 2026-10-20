@@ -79,6 +79,7 @@ After installation, configure the integration via the UI:
 | `sensor.tge_rdn_subscription_fee` | Opłata abonamentowa | Subscription fee (PLN, gross) |
 | `sensor.tge_rdn_capacity_fee` | Opłata mocowa | Capacity fee (PLN, gross) |
 | `sensor.tge_rdn_trade_fee` | Opłata handlowa | Trade fee (PLN, gross) |
+| `binary_sensor.cheap_electricity` | Tani prąd | `on` in a tariff zone marked as cheap; unavailable for dynamic seller tariffs |
 
 All price sensors expose `prices_today_gross` and `prices_tomorrow_gross` attributes containing hourly breakdowns, as well as `is_working_day`, `price_source`, `dst_support`, and `last_update`.
 
